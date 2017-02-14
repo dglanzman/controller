@@ -211,18 +211,32 @@ word PingPongCheck()
 // Output:
 //   Commanded Servo Position [deg]
 //
+#define AVG_LEN 3
+double filt(double input) {
+  static double moving_avg[AVG_LEN] = {0};
+  const double factors[AVG_LEN] = {0.8, 0.15, 0.05};
+  for (int i = 0; i < AVG_LEN-1; i++) {
+    moving_avg[i+1] = moving_avg[i];
+  }
+  moving_avg[0] = input;
+  double fil = 0;
+  for (int i = 0; i < AVG_LEN; i++) {
+    fil += moving_avg[i] * factors[i];
+  }
+  return fil;
+}
 
 double ServoControlLaw(double xBd, double xBmm) {
   static double integrator = 0;
   static double last_error = 0;
 
-  const double Kp = 1;
-  const double Kd = 1;
-  const double Ki = 1;
+  const double Kp = 0.1; // 0.01
+  const double Kd = 1.3;  // 0.1
+  const double Ki = 0.1; // 0.01
 
-  double error = xBd - xBmm;
+  double error = filt(xBd - xBmm);
+  integrator = integrator + error * deltaT;
   double output = Kp * error + Kd * (error - last_error) + Ki * integrator;
-  integrator += error;
   last_error = error;
 
   return output;
